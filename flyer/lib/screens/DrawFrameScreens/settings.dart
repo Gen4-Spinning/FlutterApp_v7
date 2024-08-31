@@ -18,9 +18,7 @@ import '../../services/snackbar_service.dart';
 class DrawFrameSettingsPage extends StatefulWidget {
 
   BluetoothConnection connection;
-
   Stream<Uint8List> settingsStream;
-
   DrawFrameSettingsPage({required this.connection, required this.settingsStream});
 
   @override
@@ -36,13 +34,19 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
   final TextEditingController _rampDownTime = TextEditingController();
   final TextEditingController _creelTensionFactor = TextEditingController();
 
+  final TextEditingController Kp_ = TextEditingController();
+  final TextEditingController Ki_ = TextEditingController();
+  final TextEditingController FF_ = TextEditingController();
+  final TextEditingController SO_ = TextEditingController();
+
+  List<String> _motorName = ["FRONT ROLLER","BACK ROLLER","CREEL"];
+  late String _motorNameChoice = _motorName.first;
 
   List<String> _data = List<String>.empty(growable: true);
   bool newDataReceived = false;
 
   late BluetoothConnection connection;
   late Stream<Uint8List> settingsStream;
-
 
   @override
   void initState() {
@@ -54,7 +58,7 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
       settingsStream = widget.settingsStream;
     }
     catch(e){
-      print("Settings: Connection init: ${e.toString()}");
+        print("Settings: Connection init: ${e.toString()}");
     }
 
 
@@ -77,7 +81,7 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
 
 
     try{
-      settingsStream!.listen(_onDataReceived).onDone(() {});
+      settingsStream.listen(_onDataReceived).onDone(() {});
     }
     catch(e){
 
@@ -102,17 +106,163 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
     double screenHt  = MediaQuery.of(context).size.height;
     double screenWidth = MediaQuery.of(context).size.width;
 
+    if(connection.isConnected) {
+      bool _enabled = Provider
+          .of<DrawFrameConnectionProvider>(context, listen: false)
+          .settingsChangeAllowed;
 
-    if(connection!.isConnected){
-      bool _enabled = Provider.of<DrawFrameConnectionProvider>(context,listen: false).settingsChangeAllowed;
+      return DefaultTabController(
+          length: 2,
+          child: Scaffold(
+            appBar: AppBar(
+              automaticallyImplyLeading: false,
+              bottom: TabBar(
+                  tabs:[
+                    Tab(text:'Process'),
+                    Tab(text:'PID'),
+              ]),
+            ),
+            body: TabBarView(
+                children: [   // first child is tab 1, second is tab 2
+                  Center(
+                    child:
+                      Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                                Table(
+                                columnWidths: const <int, TableColumnWidth>{
+                                  0: FractionColumnWidth(0.65),
+                                  1: FractionColumnWidth(0.30),
+                                },
+                                  defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                                  children: <TableRow>[
+                                    _customRow("DeliverySpeed (mtr/min)", _deliverySpeed, isFloat: false,defaultValue: "",enabled: _enabled),
+                                    _customRow("Draft", _draft,defaultValue: "",enabled: _enabled),
+                                    _customRow("Length Limit (mtrs)", _lengthLimit,isFloat: false,defaultValue: "",enabled: _enabled),
+                                    _customRow("RampUp Time (sec)", _rampUpTime,isFloat: false,defaultValue: "",enabled: _enabled),
+                                    _customRow("RampDown Time (sec)", _rampDownTime, isFloat: false,defaultValue: "",enabled: _enabled),
+                                    _customRow("Creel Tension Factor", _creelTensionFactor,isFloat: true, defaultValue: "", enabled: _enabled),
+                                  ],
+                                ),
+                                Container(
+                                  height: MediaQuery.of(context).size.height*0.1,
+                                  width: MediaQuery.of(context).size.width,
+                                ),
+                                Container(
+                                    margin: const EdgeInsets.all(10),
+                                    height: MediaQuery.of(context).size.height*0.1,
+                                    width: MediaQuery.of(context).size.width,
 
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+
+                                      children: _settingsButtons(),
+                                    )
+                                ),
+                              ]
+                          )
+                  ),
+                  Center(
+                      child:
+                        Column(
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Table(
+                                columnWidths: const <int, TableColumnWidth>{
+                                  0: FractionColumnWidth(0.65),
+                                  1: FractionColumnWidth(0.30),
+                                },
+                                defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                                children: <TableRow>[
+                                  //Motor Name section
+                                  TableRow(
+                                    children: <Widget>[
+
+                                      TableCell(
+                                        verticalAlignment: TableCellVerticalAlignment.middle,
+                                        child: Container(
+                                          margin: EdgeInsets.only(left: 20, right: 20,top: 10),
+                                          child: Text(
+                                            "Motor Name",
+                                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                                          ),
+                                        ),
+                                      ),
+                                      TableCell(
+                                        verticalAlignment: TableCellVerticalAlignment.middle,
+                                        child:
+                                        Container(
+                                          height: MediaQuery.of(context).size.height*0.05,
+                                          width: MediaQuery.of(context).size.width*0.2,
+                                          margin: EdgeInsets.only(top: 10,bottom: 20),
+                                          child: DropdownButton<String>(
+                                            value: _motorNameChoice,
+                                            icon: const Icon(Icons.arrow_drop_down),
+                                            elevation: 16,
+                                            alignment: FractionalOffset.topLeft,
+                                            style: const TextStyle(color: Colors.lightGreen),
+                                            underline: Container(),
+                                            isExpanded: true,
+                                            onChanged: (String? value) {
+                                              // This is called when the user selects an item.
+                                              setState(() {
+                                                _motorNameChoice = value!;
+                                              });
+                                            },
+                                            items: _motorName.map<DropdownMenuItem<String>>((String value) {
+                                              return DropdownMenuItem<String>(
+                                                value: value,
+                                                child: Text(value),
+                                              );
+                                            }).toList(),
+                                          ),
+                                        ),
+                                      ),
+
+                                    ],
+                                  ),
+                                  _customRow("Kp ", Kp_, isFloat:true,defaultValue: "",enabled: _enabled),
+                                  _customRow("Ki", Ki_,isFloat:true,defaultValue: "",enabled: _enabled),
+                                  _customRow("Feed Forward", FF_,isFloat: false,defaultValue: "",enabled: _enabled),
+                                  _customRow("Start Offset", SO_,isFloat: false,defaultValue: "",enabled: _enabled),
+                                ],
+                              ),
+                              Container(
+                                height: MediaQuery.of(context).size.height*0.1,
+                                width: MediaQuery.of(context).size.width,
+                              ),
+                              Container(
+                                  margin: const EdgeInsets.all(10),
+                                  height: MediaQuery.of(context).size.height*0.1,
+                                  width: MediaQuery.of(context).size.width,
+
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+
+                                    children: _settingsButtonsPID(),
+                                  )
+                              ),
+                            ]
+                  ),
+                  )
+                ],
+            )
+          )
+      );
+
+
+
+    /*
       return SingleChildScrollView(
         padding: EdgeInsets.only(left:screenHt *0.02,top: screenHt*0.01 ,bottom: screenHt*0.02, right: screenWidth*0.02),
         scrollDirection: Axis.vertical,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
-
           children: [
 
             Container(
@@ -129,6 +279,8 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
               ),
             ),
 
+
+            /*
             Table(
               columnWidths: const <int, TableColumnWidth>{
                 0: FractionColumnWidth(0.65),
@@ -144,13 +296,14 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
                 _customRow("Creel Tension Factor", _creelTensionFactor,isFloat: true, defaultValue: "", enabled: _enabled),
               ],
             ),
+            */
 
             Container(
               height: MediaQuery.of(context).size.height*0.1,
               width: MediaQuery.of(context).size.width,
             ),
             Container(
-              margin: EdgeInsets.all(10),
+              margin: const EdgeInsets.all(10),
               height: MediaQuery.of(context).size.height*0.1,
               width: MediaQuery.of(context).size.width,
 
@@ -164,17 +317,16 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
           ],
         ),
       );
+      */
     }
     else{
       return _checkConnection();
     }
-
-
-
   }
 
-  List<Widget> _settingsButtons(){
 
+
+  List<Widget> _settingsButtons(){
     if(Provider.of<DrawFrameConnectionProvider>(context,listen: false).settingsChangeAllowed){
       return [
         Column(
@@ -248,9 +400,9 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
                   DrawFrameConnectionProvider().setSettings(_sm.toMap());
                   Provider.of<DrawFrameConnectionProvider>(context,listen: false).setSettings(_sm.toMap());
 
-                  connection!.output.add(Uint8List.fromList(utf8.encode(_msg)));
-                  await connection!.output!.allSent.then((v) {});
-                  await Future.delayed(Duration(milliseconds: 500)); //wait for acknowledgement
+                  connection.output.add(Uint8List.fromList(utf8.encode(_msg)));
+                  await connection.output.allSent.then((v) {});
+                  await Future.delayed(const Duration(milliseconds: 500)); //wait for acknowledgement
 
                   if(newDataReceived){
                     String _d = _data.last;
@@ -395,6 +547,80 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
     }
   }
 
+  List<Widget> _settingsButtonsPID(){
+    if(Provider.of<DrawFrameConnectionProvider>(context,listen: false).settingsChangeAllowed){
+      return [
+        Row(
+          children:[
+            Container(
+              height: MediaQuery.of(context).size.height*0.1,
+              width: MediaQuery.of(context).size.width/2,
+              margin: const EdgeInsets.only(left:15),
+              child:Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  IconButton(
+                      onPressed: () async {
+                        //_requestSettings();
+                      },
+                      icon: Icon(Icons.input, color: Theme.of(context).primaryColor,)
+                  ),
+                  Text(
+                    "Input",
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  IconButton(
+                    onPressed: () async {
+                    },
+                    icon: Icon(Icons.save,color: Theme.of(context).primaryColor,),
+                  ),
+                  Text(
+                    "Save",
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: Theme.of(context).primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+          ])];
+    }
+    else{
+      return [
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            IconButton(
+                onPressed: () async {
+                  _requestSettings();
+                },
+                icon: Icon(Icons.input, color: Theme.of(context).primaryColor,)
+            ),
+            Text(
+              "Input",
+              style: TextStyle(
+                fontSize: 10,
+                color: Theme.of(context).primaryColor,
+              ),
+            ),
+          ],
+        ),
+      ];
+    }
+  }
+
 
   Dialog _popUpUI(){
 
@@ -414,8 +640,8 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
     try {
       String _d = utf8.decode(data);
 
-      if(_d==null || _d==""){
-        throw FormatException('Invalid Packet');
+      if(_d==""){
+        throw const FormatException('Invalid Packet');
       }
 
       if(_d.substring(4,6)=="02" || _d == Acknowledgement().createPacket() || _d == Acknowledgement().createPacket(error: true)){
@@ -587,10 +813,10 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
 
   void _requestSettings() async {
     try {
-      connection!.output.add(Uint8List.fromList(utf8.encode(RequestSettings().createPacket())));
+      connection.output.add(Uint8List.fromList(utf8.encode(RequestSettings().createPacket())));
 
-      await connection!.output!.allSent;
-      await Future.delayed(Duration(seconds: 1)); //wait for acknowlegement
+      await connection.output.allSent;
+      await Future.delayed(const Duration(seconds: 1)); //wait for acknowlegement
       /*SnackBar _sb = SnackBarService(
           message: "Sent Request for Settings!", color: Colors.green)
           .snackBar();*/
@@ -603,11 +829,9 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
         Map<String, double> settings = RequestSettings().decode(_d);
         //settings = RequestSettings().decode(_d);
 
-
         if(settings.isEmpty){
           throw const FormatException("Settings Returned Empty");
         }
-
 
         _deliverySpeed.text = settings["deliverySpeed"]!.toInt().toString();
         _draft.text = settings["draft"].toString();
@@ -617,7 +841,6 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
         _creelTensionFactor.text = settings["creelTensionFactor"]!.toDouble().toStringAsFixed(2);
 
         newDataReceived = false;
-
 
         SettingsMessage _sm = SettingsMessage(deliverySpeed: _deliverySpeed.text, draft: _draft.text, lengthLimit: _lengthLimit.text, rampUpTime: _rampUpTime.text, rampDownTime: _rampDownTime.text, creelTensionFactor: _creelTensionFactor.text);
         DrawFrameConnectionProvider().setSettings(_sm.toMap());
@@ -710,7 +933,7 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
                 color: Theme.of(context).primaryColor,
               ),
             ),
-            SizedBox(
+            const SizedBox(
               height: 20,
             ),
             Text("Please Reconnect...", style: TextStyle(color: Theme.of(context).highlightColor, fontSize: 15),),

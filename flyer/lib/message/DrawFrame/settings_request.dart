@@ -111,7 +111,6 @@ class RequestSettings{
 void main() {
 
   String p = "7E4002990670040050710841000000720401907304000675083f800000740400067E";
-  
   print(RequestSettings().decode(p));
 }
 
