@@ -13,6 +13,13 @@ Map<String,List> settingsLimits = {
   "creelTensionFactor":[0.25,5],
 };
 
+Map<String,List> pidSettingsLimits = {
+  "Kp":[0,200],
+  "Ki":[0,200],
+  "FF":[0,80],
+  "SO":[0,200],
+};
+
 class SettingsMessage{
   
   String deliverySpeed;

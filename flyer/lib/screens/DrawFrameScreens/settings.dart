@@ -4,10 +4,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
+import 'package:flyer/message/DrawFrame/enums.dart';
 
 import 'package:flyer/message/acknowledgement.dart';
 import 'package:flyer/message/DrawFrame/settings_request.dart';
 import 'package:flyer/message/DrawFrame/settingsMessage.dart';
+import 'package:flyer/message/DrawFrame/PID_settings_message.dart';
 import 'package:flyer/screens/DrawFrameScreens/settingsPopUpPage.dart';
 import 'package:flyer/services/DrawFrame/provider_service.dart';
 import 'package:provider/provider.dart';
@@ -19,7 +21,7 @@ class DrawFrameSettingsPage extends StatefulWidget {
 
   BluetoothConnection connection;
   Stream<Uint8List> settingsStream;
-  DrawFrameSettingsPage({required this.connection, required this.settingsStream});
+  DrawFrameSettingsPage({super.key, required this.connection, required this.settingsStream});
 
   @override
   _DrawFrameSettingsPageState createState() => _DrawFrameSettingsPageState();
@@ -34,16 +36,20 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
   final TextEditingController _rampDownTime = TextEditingController();
   final TextEditingController _creelTensionFactor = TextEditingController();
 
-  final TextEditingController Kp_ = TextEditingController();
-  final TextEditingController Ki_ = TextEditingController();
-  final TextEditingController FF_ = TextEditingController();
-  final TextEditingController SO_ = TextEditingController();
-
-  List<String> _motorName = ["FRONT ROLLER","BACK ROLLER","CREEL"];
-  late String _motorNameChoice = _motorName.first;
-
   List<String> _data = List<String>.empty(growable: true);
   bool newDataReceived = false;
+
+  //PID settingsUI widgets
+  final TextEditingController kP_ = TextEditingController();
+  final TextEditingController kI_ = TextEditingController();
+  final TextEditingController feedForward_ = TextEditingController();
+  final TextEditingController startOffset_ = TextEditingController();
+
+  final List<String> _motorName = ["FRONT ROLLER","BACK ROLLER","CREEL"];
+  late String selectedDropDownMotor = _motorName.first;
+  late String previousDropDownMotor = _motorName.first;
+
+  late PidSettings p0;
 
   late BluetoothConnection connection;
   late Stream<Uint8List> settingsStream;
@@ -88,7 +94,7 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
       print("Settings: Listening init: ${e.toString()}");
     }
 
-
+    p0 = PidSettings(motorName: selectedDropDownMotor, kP: "0", kI: "0", feedForward: "0", startOffset: "0");
 
   }
 
@@ -110,7 +116,6 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
       bool _enabled = Provider
           .of<DrawFrameConnectionProvider>(context, listen: false)
           .settingsChangeAllowed;
-
       return DefaultTabController(
           length: 2,
           child: Scaffold(
@@ -137,12 +142,12 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
                                 },
                                   defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                                   children: <TableRow>[
-                                    _customRow("DeliverySpeed (mtr/min)", _deliverySpeed, isFloat: false,defaultValue: "",enabled: _enabled),
-                                    _customRow("Draft", _draft,defaultValue: "",enabled: _enabled),
-                                    _customRow("Length Limit (mtrs)", _lengthLimit,isFloat: false,defaultValue: "",enabled: _enabled),
-                                    _customRow("RampUp Time (sec)", _rampUpTime,isFloat: false,defaultValue: "",enabled: _enabled),
-                                    _customRow("RampDown Time (sec)", _rampDownTime, isFloat: false,defaultValue: "",enabled: _enabled),
-                                    _customRow("Creel Tension Factor", _creelTensionFactor,isFloat: true, defaultValue: "", enabled: _enabled),
+                                    customRow("DeliverySpeed (mtr/min)", _deliverySpeed, isFloat: false,defaultValue: "",enabled: _enabled),
+                                    customRow("Draft", _draft,defaultValue: "",enabled: _enabled),
+                                    customRow("Length Limit (mtrs)", _lengthLimit,isFloat: false,defaultValue: "",enabled: _enabled),
+                                    customRow("RampUp Time (sec)", _rampUpTime,isFloat: false,defaultValue: "",enabled: _enabled),
+                                    customRow("RampDown Time (sec)", _rampDownTime, isFloat: false,defaultValue: "",enabled: _enabled),
+                                    customRow("Creel Tension Factor", _creelTensionFactor,isFloat: true, defaultValue: "", enabled: _enabled),
                                   ],
                                 ),
                                 Container(
@@ -177,57 +182,11 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
                                 },
                                 defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                                 children: <TableRow>[
-                                  //Motor Name section
-                                  TableRow(
-                                    children: <Widget>[
-
-                                      TableCell(
-                                        verticalAlignment: TableCellVerticalAlignment.middle,
-                                        child: Container(
-                                          margin: EdgeInsets.only(left: 20, right: 20,top: 10),
-                                          child: Text(
-                                            "Motor Name",
-                                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                                          ),
-                                        ),
-                                      ),
-                                      TableCell(
-                                        verticalAlignment: TableCellVerticalAlignment.middle,
-                                        child:
-                                        Container(
-                                          height: MediaQuery.of(context).size.height*0.05,
-                                          width: MediaQuery.of(context).size.width*0.2,
-                                          margin: EdgeInsets.only(top: 10,bottom: 20),
-                                          child: DropdownButton<String>(
-                                            value: _motorNameChoice,
-                                            icon: const Icon(Icons.arrow_drop_down),
-                                            elevation: 16,
-                                            alignment: FractionalOffset.topLeft,
-                                            style: const TextStyle(color: Colors.lightGreen),
-                                            underline: Container(),
-                                            isExpanded: true,
-                                            onChanged: (String? value) {
-                                              // This is called when the user selects an item.
-                                              setState(() {
-                                                _motorNameChoice = value!;
-                                              });
-                                            },
-                                            items: _motorName.map<DropdownMenuItem<String>>((String value) {
-                                              return DropdownMenuItem<String>(
-                                                value: value,
-                                                child: Text(value),
-                                              );
-                                            }).toList(),
-                                          ),
-                                        ),
-                                      ),
-
-                                    ],
-                                  ),
-                                  _customRow("Kp ", Kp_, isFloat:true,defaultValue: "",enabled: _enabled),
-                                  _customRow("Ki", Ki_,isFloat:true,defaultValue: "",enabled: _enabled),
-                                  _customRow("Feed Forward", FF_,isFloat: false,defaultValue: "",enabled: _enabled),
-                                  _customRow("Start Offset", SO_,isFloat: false,defaultValue: "",enabled: _enabled),
+                                  customRowWithDropDown("MotorName",_motorName),
+                                  customRow("Kp ", kP_, isFloat:true,defaultValue: "",enabled: _enabled),
+                                  customRow("Ki", kI_,isFloat:true,defaultValue: "",enabled: _enabled),
+                                  customRow("Feed Forward", feedForward_,isFloat: false,defaultValue: "",enabled: _enabled),
+                                  customRow("Start Offset", startOffset_,isFloat: false,defaultValue: "",enabled: _enabled),
                                 ],
                               ),
                               Container(
@@ -253,77 +212,11 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
             )
           )
       );
-
-
-
-    /*
-      return SingleChildScrollView(
-        padding: EdgeInsets.only(left:screenHt *0.02,top: screenHt*0.01 ,bottom: screenHt*0.02, right: screenWidth*0.02),
-        scrollDirection: Axis.vertical,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-
-            Container(
-              margin: const EdgeInsets.only(bottom: 10,top: 20),
-              child: Center(
-                child: Text(
-                  "Settings",
-                  style: TextStyle(
-                    color: Theme.of(context).primaryColor,
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-
-
-            /*
-            Table(
-              columnWidths: const <int, TableColumnWidth>{
-                0: FractionColumnWidth(0.65),
-                1: FractionColumnWidth(0.30),
-              },
-              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-              children: <TableRow>[
-                _customRow("DeliverySpeed (mtr/min)", _deliverySpeed, isFloat: false,defaultValue: "",enabled: _enabled),
-                _customRow("Draft", _draft,defaultValue: "",enabled: _enabled),
-                _customRow("Length Limit (mtrs)", _lengthLimit,isFloat: false,defaultValue: "",enabled: _enabled),
-                _customRow("RampUp Time (sec)", _rampUpTime,isFloat: false,defaultValue: "",enabled: _enabled),
-                _customRow("RampDown Time (sec)", _rampDownTime, isFloat: false,defaultValue: "",enabled: _enabled),
-                _customRow("Creel Tension Factor", _creelTensionFactor,isFloat: true, defaultValue: "", enabled: _enabled),
-              ],
-            ),
-            */
-
-            Container(
-              height: MediaQuery.of(context).size.height*0.1,
-              width: MediaQuery.of(context).size.width,
-            ),
-            Container(
-              margin: const EdgeInsets.all(10),
-              height: MediaQuery.of(context).size.height*0.1,
-              width: MediaQuery.of(context).size.width,
-
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.start,
-
-                children: _settingsButtons(),
-              ),
-            ),
-          ],
-        ),
-      );
-      */
     }
     else{
       return _checkConnection();
     }
   }
-
 
 
   List<Widget> _settingsButtons(){
@@ -335,7 +228,7 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
           children: [
             IconButton(
                 onPressed: () async {
-                  _requestSettings();
+                  requestProcessSettings();
                 },
                 icon: Icon(Icons.input, color: Theme.of(context).primaryColor,)
             ),
@@ -498,7 +391,7 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
           children: [
             IconButton(
                 onPressed: () async {
-                  _requestSettings();
+                  requestProcessSettings();
                 },
                 icon: Icon(Icons.input, color: Theme.of(context).primaryColor,)
             ),
@@ -562,7 +455,7 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
                 children: [
                   IconButton(
                       onPressed: () async {
-                        //_requestSettings();
+                        requestPIDSettings();
                       },
                       icon: Icon(Icons.input, color: Theme.of(context).primaryColor,)
                   ),
@@ -582,6 +475,7 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
                 children: [
                   IconButton(
                     onPressed: () async {
+                      sendPIDSettings();
                     },
                     icon: Icon(Icons.save,color: Theme.of(context).primaryColor,),
                   ),
@@ -604,7 +498,7 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
           children: [
             IconButton(
                 onPressed: () async {
-                  _requestSettings();
+                  requestPIDSettings();
                 },
                 icon: Icon(Icons.input, color: Theme.of(context).primaryColor,)
             ),
@@ -621,7 +515,6 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
     }
   }
 
-
   Dialog _popUpUI(){
 
     return Dialog(
@@ -634,38 +527,7 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
     );
   }
 
-
-  void _onDataReceived(Uint8List data) {
-
-    try {
-      String _d = utf8.decode(data);
-
-      if(_d==""){
-        throw const FormatException('Invalid Packet');
-      }
-
-      if(_d.substring(4,6)=="02" || _d == Acknowledgement().createPacket() || _d == Acknowledgement().createPacket(error: true)){
-
-        //Allow if:
-        //request settins data
-        // or if acknowledgement (error or no error )
-
-        _data.add(_d);
-        newDataReceived = true;
-      }
-
-      //else ignore data
-
-    }
-    catch (e){
-
-      print("Settings: onDataReceived: ${e.toString()}");
-    }
-  }
-
-
-  TableRow _customRow(String label, TextEditingController controller, {bool isFloat=true, String defaultValue="0", bool enabled=true}){
-
+  TableRow customRow(String label, TextEditingController controller, {bool isFloat=true, String defaultValue="0", bool enabled=true}){
     return TableRow(
       children: <Widget>[
         TableCell(
@@ -713,6 +575,70 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
       ],
     );
   }
+  TableRow customRowWithDropDown(String label, List<String> dropDownList, {bool enabled=true}) {
+    return TableRow(
+      children: <Widget>[
+        TableCell(
+          verticalAlignment: TableCellVerticalAlignment.middle,
+          child: Container(
+            margin: EdgeInsets.only(left: 20, right: 20, top: 10),
+            child: Text(label,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ),
+        TableCell(
+          verticalAlignment: TableCellVerticalAlignment.middle,
+          child:
+          Container(
+            height: MediaQuery
+                .of(context)
+                .size
+                .height * 0.05,
+            width: MediaQuery
+                .of(context)
+                .size
+                .width * 0.2,
+            margin: const EdgeInsets.only(top: 10, bottom: 20),
+            child: DropdownButton<String>(
+              value: selectedDropDownMotor,
+              icon: const Icon(Icons.arrow_drop_down),
+              elevation: 16,
+              alignment: FractionalOffset.topLeft,
+              style: const TextStyle(color: Colors.lightGreen),
+              underline: Container(),
+              isExpanded: true,
+              onChanged: (String? value) {
+                // This is called when the user selects an item.
+                setState(() {
+                  selectedDropDownMotor = value!;
+                  doSomething();
+                });
+              },
+              items: dropDownList.map<DropdownMenuItem<String>>((String value) {
+                return DropdownMenuItem<String>(
+                  value: value,
+                  child: Text(value),
+                );
+              }).toList(),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+void doSomething(){
+      if (previousDropDownMotor != selectedDropDownMotor){
+        kP_.text = "";
+        kI_.text = "";
+        feedForward_.text = "";
+        startOffset_.text = "";
+        previousDropDownMotor = selectedDropDownMotor;
+      }
+  }
+
+
 
   String isValidForm(){
 
@@ -810,24 +736,22 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
     return errorMessage;
   }
 
-
-  void _requestSettings() async {
+  void requestProcessSettings() async {
     try {
       connection.output.add(Uint8List.fromList(utf8.encode(RequestSettings().createPacket())));
 
       await connection.output.allSent;
       await Future.delayed(const Duration(seconds: 1)); //wait for acknowlegement
-      /*SnackBar _sb = SnackBarService(
+      /*SnackBar sB_ = SnackBarService(
           message: "Sent Request for Settings!", color: Colors.green)
           .snackBar();*/
-      //ScaffoldMessenger.of(context).showSnackBar(_sb);
+      //ScaffoldMessenger.of(context).showSnackBar(sB_);
 
 
       if(newDataReceived){
         String _d = _data.last; //remember to make newDataReceived = false;
 
         Map<String, double> settings = RequestSettings().decode(_d);
-        //settings = RequestSettings().decode(_d);
 
         if(settings.isEmpty){
           throw const FormatException("Settings Returned Empty");
@@ -846,17 +770,16 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
         DrawFrameConnectionProvider().setSettings(_sm.toMap());
         Provider.of<DrawFrameConnectionProvider>(context,listen: false).setSettings(_sm.toMap());
 
-
-        SnackBar _sb = SnackBarService(message: "Settings Received", color: Colors.green).snackBar();
-        ScaffoldMessenger.of(context).showSnackBar(_sb);
+        SnackBar sB_ = SnackBarService(message: "Settings Received", color: Colors.green).snackBar();
+        ScaffoldMessenger.of(context).showSnackBar(sB_);
 
         setState(() {
 
         });
       }
       else{
-        SnackBar _sb = SnackBarService(message: "Settings Not Received", color: Colors.red).snackBar();
-        ScaffoldMessenger.of(context).showSnackBar(_sb);
+        SnackBar sB = SnackBarService(message: "Settings Not Received", color: Colors.red).snackBar();
+        ScaffoldMessenger.of(context).showSnackBar(sB);
 
       }
 
@@ -879,6 +802,218 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
     }
 
   }
+
+
+
+
+  void requestPIDSettings() async {
+    try {
+      p0.motorName = selectedDropDownMotor;
+      connection.output.add(Uint8List.fromList(utf8.encode(p0.createRequestPacket())));
+
+      await connection.output.allSent;
+      await Future.delayed(const Duration(seconds: 1)); //wait for acknowlegement
+      /*SnackBar sB = SnackBarService(
+          message: "Sent Request for Settings!", color: Colors.green)
+          .snackBar();
+      ScaffoldMessenger.of(context).showSnackBar(sB);*/
+
+      if(newDataReceived){
+        String _d = _data.last; //remember to make newDataReceived = false;
+        Map<String, double> settings = p0.decodePacket(_d);
+
+        if(settings.isEmpty){
+          throw const FormatException("Settings Returned Empty");
+        }
+
+        kP_.text = settings["kP"]!.toInt().toString();
+        kI_.text = settings["kI"]!.toInt().toString();
+        feedForward_.text = settings["feedForward"]!.toInt().toString();
+        startOffset_.text = settings["startOffset"]!.toInt().toString();
+
+        newDataReceived = false;
+
+        //DrawFrameConnectionProvider().setSettings(_sm.toMap());
+       // Provider.of<DrawFrameConnectionProvider>(context,listen: false).setSettings(_sm.toMap());
+
+        SnackBar sB = SnackBarService(message: "Settings Received", color: Colors.green).snackBar();
+        ScaffoldMessenger.of(context).showSnackBar(sB);
+
+        setState(() {
+
+        });
+      }
+      else{
+        SnackBar sB = SnackBarService(message: "Settings Not Received", color: Colors.red).snackBar();
+        ScaffoldMessenger.of(context).showSnackBar(sB);
+
+      }
+    }
+    catch(e){
+      print("Settings!: ${e.toString()}");
+      //Remember to change this error suppression
+      if(e.toString() !=  "Bad state: Stream has already been listened to."){
+        SnackBar sb = SnackBarService(message: "Error in Receiving Settings", color: Colors.red).snackBar();
+        ScaffoldMessenger.of(context).showSnackBar(sb);
+      }
+      else{
+        SnackBar sb = SnackBarService(message: "Settings Received", color: Colors.green).snackBar();
+        ScaffoldMessenger.of(context).showSnackBar(sb);
+        setState(() {
+
+        });
+      }
+
+    }
+
+  }
+
+  String isValidFormPid(){
+
+    //checks if the entered values in the form are valid
+    //returns appropriate error message if form is invalid
+    //returns valid! if form is valid
+
+    String errorMessage = "valid";
+
+    if(kP_.text.trim() == "" ){
+      errorMessage = "Kp is Empty!";
+      return errorMessage;
+    }
+    else{
+      List range = pidSettingsLimits["Kp"]!;
+      double val = double.parse(kP_.text.trim());
+      if(val < range[0] || val > range[1]){
+        errorMessage = "Kp values should be within $range";
+        return errorMessage;
+      }
+    }
+
+    if(kI_.text.trim() == "" ){
+      errorMessage = "Ki is Empty!";
+      return errorMessage;
+    }
+    else{
+      List range = pidSettingsLimits["Ki"]!;
+      double val = double.parse(kI_.text.trim());
+
+      if(val < range[0] || val > range[1]){
+        errorMessage = "Draft values should be within $range";
+        return errorMessage;
+      }
+    }
+
+    if(startOffset_.text.trim() == "" ){
+      errorMessage = "Start Offset is Empty!";
+      return errorMessage;
+    }
+    else{
+      List range = pidSettingsLimits["SO"]!;
+      double val = double.parse(startOffset_.text.trim());
+
+      if(val < range[0] || val > range[1]){
+        errorMessage = "Start Offset values should be within $range";
+        return errorMessage;
+      }
+    }
+
+    if(feedForward_.text.trim() == "" ){
+      errorMessage = "Feed Forward is Empty!";
+      return errorMessage;
+    }
+    else{
+
+      List range = pidSettingsLimits["FF"]!;
+      double val = double.parse(feedForward_.text.trim());
+
+      if(val < range[0] || val > range[1]){
+        errorMessage = "Feed Forward values should be within $range";
+        return errorMessage;
+      }
+    }
+
+    return errorMessage;
+  }
+
+  void sendPIDSettings() async {
+    String _valid = isValidFormPid();
+    if(_valid == "valid"){
+      p0.kP = kP_.text;
+      p0.kI = kI_.text;
+      p0.feedForward = feedForward_.text;
+      p0.startOffset = startOffset_.text;
+      p0.motorName = selectedDropDownMotor;
+
+      String _msg = p0.createNewPidPacket();
+
+      //what does this do?
+      //DrawFrameConnectionProvider().setSettings(_sm.toMap());
+      //Provider.of<DrawFrameConnectionProvider>(context,listen: false).setSettings(_sm.toMap());
+
+      connection.output.add(Uint8List.fromList(utf8.encode(_msg)));
+      await connection.output.allSent.then((v) {});
+      await Future.delayed(const Duration(milliseconds: 500)); //wait for acknowledgement
+
+      if(newDataReceived) {
+        String _d = _data.last;
+
+        if (_d == Acknowledgement().createPacket()) {
+          //no eeprom error , acknowledge
+          SnackBar _sb = SnackBarService(
+              message: "Settings Saved", color: Colors.green).snackBar();
+          ScaffoldMessenger.of(context).showSnackBar(_sb);
+        }
+        else {
+          //failed acknowledgement
+          SnackBar _sb = SnackBarService(
+              message: "Settings Not Saved", color: Colors.red).snackBar();
+          ScaffoldMessenger.of(context).showSnackBar(_sb);
+        }
+
+        newDataReceived = false;
+        setState(() {});
+      }
+    }
+    else{ // invalid data
+      SnackBar _sb = SnackBarService(message: _valid, color: Colors.red).snackBar();
+      ScaffoldMessenger.of(context).showSnackBar(_sb);
+    }
+
+  }
+
+
+
+
+  void _onDataReceived(Uint8List data) {
+    try {
+      String _d = utf8.decode(data);
+      if(_d==""){
+        throw const FormatException('Invalid Packet');
+      }
+      String information = _d.substring(4,6);
+      if(information==Information.settingsToApp.hexVal || information == Information.pidResponse.hexVal ||
+          _d == Acknowledgement().createPacket() || _d == Acknowledgement().createPacket(error: true)){
+
+        //Allow if:
+        //request settings data
+        //pid request
+        // or if acknowledgement (error or no error )
+        _data.add(_d);
+        newDataReceived = true;
+      }
+
+      //else ignore data
+
+    }
+    catch (e){
+
+      print("Settings: onDataReceived: ${e.toString()}");
+    }
+  }
+
+
+
+
 
 
   String calculate(){

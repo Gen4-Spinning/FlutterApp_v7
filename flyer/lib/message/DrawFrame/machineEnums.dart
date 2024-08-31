@@ -40,7 +40,6 @@ extension MotorIdExtension on MotorId{
 
   String get hexVal {
     switch (this){
-
       case MotorId.frontRoller:
         return "01";
       case MotorId.backRoller:

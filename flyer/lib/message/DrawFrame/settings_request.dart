@@ -29,8 +29,6 @@ class RequestSettings{
       throw FormatException("Invalid Start Of Frame");
     }
 
-
-
     if(_requestSettings!="02"){
       print(packet);
 
@@ -74,7 +72,7 @@ class RequestSettings{
 
     String packet = "";
     String packetLength = "08";
-    String attributeLength = "00";
+    String attributeLength = "01";
 
     packet = Separator.sof.hexVal+packetLength+Information.requestSettings.hexVal+Substate.idle.hexVal+attributeLength+Separator.eof.hexVal;
 
@@ -83,7 +81,6 @@ class RequestSettings{
 
   String attributeName(String t){
 
-    
     if(t==SettingsAttribute.deliverySpeed.hexVal){
       return SettingsAttribute.deliverySpeed.name;
     }
