@@ -96,16 +96,19 @@ class PidSettings{
 
   String createNewPidPacket(){
     String packet = "";
-    String packetLength = "28";//in hex, 40 in dec
+    String packetLength = "2E";//in hex
     String information = Information.pidNew.hexVal;
     String subState = "00";
-    String attributeCount = "04";
+    String attributeCount = "05";
 
+
+    String motorHexVal = getMotorHexFromName(motorName);
+    String motorString  = createTLV(pidParameters.whichMotor.hexVal,"02",padding(motorHexVal,2));
     String kPString  = createTLV(pidParameters.kP.hexVal,"04",padding(kP,4));
     String kIString  = createTLV(pidParameters.kI.hexVal,"04",padding(kI,4));
     String ffString  = createTLV(pidParameters.feedForward.hexVal,"04",padding(feedForward,4));
     String soString  = createTLV(pidParameters.startOffset.hexVal,"04",padding(startOffset,4));
-    packet = sof+packetLength+information+subState+attributeCount+kPString+kIString+ffString+soString+eof;
+    packet = sof+packetLength+information+subState+attributeCount+motorString+kPString+kIString+ffString+soString+eof;
 
     return  packet.toUpperCase();
   }
@@ -161,9 +164,9 @@ class PidSettings{
 
 
 void main(){
-  PidSettings p = PidSettings(motorName: "FRONT ROLLER",kP: "23",kI: "10",feedForward: "40",startOffset: "3");
+  PidSettings p = PidSettings(motorName: "BACK ROLLER",kP: "23",kI: "10",feedForward: "40",startOffset: "3");
  // print(p.createRequestPacket());
- // print(p.createNewPidPacket());
+ print(p.createNewPidPacket());
 
   //String settingsPacket = "7E280E0004010400010204000103040001040400017E";
   String settingsPacket = "7E280E0004010400230204001203040046040400007E";

@@ -128,7 +128,7 @@ class _FlyerAdvancedOptionsUIState extends State<FlyerAdvancedOptionsUI> {
 
                     }
 
-                    else if(_d==Acknowledgement().createPacket()){
+                    else if(_d==Acknowledgement().createErrorPacket()){
 
                       Provider.of<FlyerConnectionProvider>(context,listen: false).setLogEnabled(value);
 
@@ -193,7 +193,7 @@ class _FlyerAdvancedOptionsUIState extends State<FlyerAdvancedOptionsUI> {
         throw FormatException('Invalid Packet');
       }
 
-      if(_d == Acknowledgement().createPacket() || _d == Acknowledgement().createPacket(error: true)){
+      if(_d == Acknowledgement().createErrorPacket() || _d == Acknowledgement().createErrorPacket(error: true)){
 
         //Allow if:
         //request settins data
@@ -591,7 +591,7 @@ class _FlyerMotorGearPageUIState extends State<FlyerMotorGearPageUI> {
           throw FormatException("GB: Send LEFT: Invalid Packet");
         }
 
-        if (_d == Acknowledgement().createPacket()) {
+        if (_d == Acknowledgement().createErrorPacket()) {
           SnackBar _sb = SnackBarService(
               message: "Saved Left Data", color: Colors.green).snackBar();
           ScaffoldMessenger.of(context).showSnackBar(_sb);
@@ -644,7 +644,7 @@ class _FlyerMotorGearPageUIState extends State<FlyerMotorGearPageUI> {
 
           }
 
-          else if(_d==Acknowledgement().createPacket()){
+          else if(_d==Acknowledgement().createErrorPacket()){
             SnackBar _sb = SnackBarService(message: "Saved Right Data", color: Colors.green).snackBar();
             ScaffoldMessenger.of(context).showSnackBar(_sb);
           }
@@ -709,7 +709,7 @@ class _FlyerMotorGearPageUIState extends State<FlyerMotorGearPageUI> {
         throw FormatException('Invalid Packet');
       }
 
-      if(_d == Acknowledgement().createPacket() || _d == Acknowledgement().createPacket(error: true)){
+      if(_d == Acknowledgement().createErrorPacket() || _d == Acknowledgement().createErrorPacket(error: true)){
 
         //Allow if:
         //request settins data
@@ -832,7 +832,7 @@ class _FlyerRTFUIState extends State<FlyerRTFUI> {
             throw FormatException("RTF: Invalid Packet");
           }
 
-          if (_d == Acknowledgement().createPacket()) {
+          if (_d == Acknowledgement().createErrorPacket()) {
             SnackBar _sb = SnackBarService(message: "Saved RTF", color: Colors.green).snackBar();
             ScaffoldMessenger.of(context).showSnackBar(_sb);
           }
@@ -1067,7 +1067,7 @@ class _FlyerRTFUIState extends State<FlyerRTFUI> {
         throw FormatException('Invalid Packet');
       }
 
-      if(_d == Acknowledgement().createPacket() || _d == Acknowledgement().createPacket(error: true) || _d.substring(4,6)==Information.RTF.hexVal){
+      if(_d == Acknowledgement().createErrorPacket() || _d == Acknowledgement().createErrorPacket(error: true) || _d.substring(4,6)==Information.RTF.hexVal){
 
         //Allow if:
         //request settins data

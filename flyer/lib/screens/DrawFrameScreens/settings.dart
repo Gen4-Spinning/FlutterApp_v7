@@ -300,7 +300,7 @@ class _DrawFrameSettingsPageState extends State<DrawFrameSettingsPage> {
                   if(newDataReceived){
                     String _d = _data.last;
 
-                    if(_d == Acknowledgement().createPacket()){
+                    if(_d == Acknowledgement().createErrorPacket()){
                       //no eeprom error , acknowledge
                       SnackBar _sb = SnackBarService(message: "Settings Saved", color: Colors.green).snackBar();
                       ScaffoldMessenger.of(context).showSnackBar(_sb);
@@ -803,16 +803,13 @@ void doSomething(){
 
   }
 
-
-
-
   void requestPIDSettings() async {
     try {
       p0.motorName = selectedDropDownMotor;
       connection.output.add(Uint8List.fromList(utf8.encode(p0.createRequestPacket())));
 
       await connection.output.allSent;
-      await Future.delayed(const Duration(seconds: 1)); //wait for acknowlegement
+      await Future.delayed(const Duration(seconds: 2)); //wait for acknowlegement for two sec
       /*SnackBar sB = SnackBarService(
           message: "Sent Request for Settings!", color: Colors.green)
           .snackBar();
@@ -936,48 +933,54 @@ void doSomething(){
   }
 
   void sendPIDSettings() async {
-    String _valid = isValidFormPid();
-    if(_valid == "valid"){
-      p0.kP = kP_.text;
-      p0.kI = kI_.text;
-      p0.feedForward = feedForward_.text;
-      p0.startOffset = startOffset_.text;
-      p0.motorName = selectedDropDownMotor;
+    try {
+      String _valid = isValidFormPid();
+      if (_valid == "valid") {
+        p0.kP = kP_.text;
+        p0.kI = kI_.text;
+        p0.feedForward = feedForward_.text;
+        p0.startOffset = startOffset_.text;
+        p0.motorName = selectedDropDownMotor;
 
-      String _msg = p0.createNewPidPacket();
+        String _msg = p0.createNewPidPacket();
 
-      //what does this do?
-      //DrawFrameConnectionProvider().setSettings(_sm.toMap());
-      //Provider.of<DrawFrameConnectionProvider>(context,listen: false).setSettings(_sm.toMap());
+        //what does this do?
+        //DrawFrameConnectionProvider().setSettings(_sm.toMap());
+        //Provider.of<DrawFrameConnectionProvider>(context,listen: false).setSettings(_sm.toMap());
 
-      connection.output.add(Uint8List.fromList(utf8.encode(_msg)));
-      await connection.output.allSent.then((v) {});
-      await Future.delayed(const Duration(milliseconds: 500)); //wait for acknowledgement
+        connection.output.add(Uint8List.fromList(utf8.encode(_msg)));
+        await connection.output.allSent;
+        await Future.delayed(const Duration(seconds: 2)); //wait for acknowledgement
 
-      if(newDataReceived) {
-        String _d = _data.last;
+        if (newDataReceived) {
+          String _d = _data.last;
 
-        if (_d == Acknowledgement().createPacket()) {
-          //no eeprom error , acknowledge
-          SnackBar _sb = SnackBarService(
-              message: "Settings Saved", color: Colors.green).snackBar();
-          ScaffoldMessenger.of(context).showSnackBar(_sb);
+          if (_d == Acknowledgement().createErrorPacket()) {
+            //no eeprom error , acknowledge
+            SnackBar _sb = SnackBarService(
+                message: "Settings Saved", color: Colors.green).snackBar();
+            ScaffoldMessenger.of(context).showSnackBar(_sb);
+          }
+          else {
+            //failed acknowledgement
+            SnackBar _sb = SnackBarService(
+                message: "Settings Not Saved", color: Colors.red).snackBar();
+            ScaffoldMessenger.of(context).showSnackBar(_sb);
+          }
+
+          newDataReceived = false;
+          setState(() {});
         }
-        else {
-          //failed acknowledgement
-          SnackBar _sb = SnackBarService(
-              message: "Settings Not Saved", color: Colors.red).snackBar();
-          ScaffoldMessenger.of(context).showSnackBar(_sb);
-        }
-
-        newDataReceived = false;
-        setState(() {});
       }
-    }
-    else{ // invalid data
-      SnackBar _sb = SnackBarService(message: _valid, color: Colors.red).snackBar();
-      ScaffoldMessenger.of(context).showSnackBar(_sb);
-    }
+      else { // invalid data
+        SnackBar _sb = SnackBarService(message: _valid, color: Colors.red)
+            .snackBar();
+        ScaffoldMessenger.of(context).showSnackBar(_sb);
+      }
+     }
+      catch(e) {
+        print("Sending Settings!: ${e.toString()}");
+      }
 
   }
 
@@ -992,7 +995,7 @@ void doSomething(){
       }
       String information = _d.substring(4,6);
       if(information==Information.settingsToApp.hexVal || information == Information.pidResponse.hexVal ||
-          _d == Acknowledgement().createPacket() || _d == Acknowledgement().createPacket(error: true)){
+          _d == Acknowledgement().createErrorPacket() || _d == Acknowledgement().createErrorPacket(error: true)){
 
         //Allow if:
         //request settings data
@@ -1006,7 +1009,6 @@ void doSomething(){
 
     }
     catch (e){
-
       print("Settings: onDataReceived: ${e.toString()}");
     }
   }

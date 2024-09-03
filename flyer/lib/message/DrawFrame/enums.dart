@@ -332,6 +332,7 @@ extension LogAttributesExtension on LogAttributes {
 
 
 enum pidParameters {
+  whichMotor,
   kP,
   kI,
   feedForward,
@@ -341,14 +342,16 @@ enum pidParameters {
 extension pidParametersExtension on pidParameters {
   String get hexVal {
     switch (this) {
-      case pidParameters.kP:
+      case pidParameters.whichMotor:
         return "01";
-      case pidParameters.kI:
+      case pidParameters.kP:
         return "02";
-      case pidParameters.feedForward:
+      case pidParameters.kI:
         return "03";
-      case pidParameters.startOffset:
+      case pidParameters.feedForward:
         return "04";
+      case pidParameters.startOffset:
+        return "05";
     }
   }
 }

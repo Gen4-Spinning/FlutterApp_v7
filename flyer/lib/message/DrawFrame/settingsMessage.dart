@@ -14,8 +14,8 @@ Map<String,List> settingsLimits = {
 };
 
 Map<String,List> pidSettingsLimits = {
-  "Kp":[0,200],
-  "Ki":[0,200],
+  "Kp":[0,2000],
+  "Ki":[0,2000],
   "FF":[0,80],
   "SO":[0,200],
 };

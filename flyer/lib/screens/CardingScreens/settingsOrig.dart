@@ -271,7 +271,7 @@ class _CardingSettingsPageState extends State<CardingSettingsPage> {
                 if(newDataReceived){
                   String _d = _data.last;
 
-                  if(_d == Acknowledgement().createPacket()){
+                  if(_d == Acknowledgement().createErrorPacket()){
                     //no eeprom error , acknowledge
                     SnackBar _sb = SnackBarService(message: "Settings Updated", color: Colors.green).snackBar();
                     ScaffoldMessenger.of(context).showSnackBar(_sb);
@@ -333,7 +333,7 @@ class _CardingSettingsPageState extends State<CardingSettingsPage> {
                 if(newDataReceived){
                   String _d = _data.last;
 
-                  if(_d == Acknowledgement().createPacket()){
+                  if(_d == Acknowledgement().createErrorPacket()){
                     //no eeprom error , acknowledge
 
                     SnackBar _sb = SnackBarService(message: "Settings Saved", color: Colors.green).snackBar();
@@ -445,7 +445,7 @@ class _CardingSettingsPageState extends State<CardingSettingsPage> {
         throw FormatException('Invalid Packet');
       }
 
-      if(_d.substring(4,6)=="02" || _d == Acknowledgement().createPacket() || _d == Acknowledgement().createPacket(error: true)){
+      if(_d.substring(4,6)=="02" || _d == Acknowledgement().createErrorPacket() || _d == Acknowledgement().createErrorPacket(error: true)){
 
         //Allow if:
         //request settins data
